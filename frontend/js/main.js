@@ -3,9 +3,7 @@
 	
 	var _info, _stationLookup = {};
 	
-	function _jsonpCallback(){
-		
-	}
+	Config.server.httpAddress = 'http://' + Config.server.address + ':' + Config.server.port + '/';
 	
 	function _command(command, parameters, callback){
 		if (typeof(parameters) === 'function') {
@@ -19,9 +17,7 @@
 			url: Config.server.httpAddress + command,
 			data: parameters,
 			dataType: 'jsonp',
-			//jsonpCallback: '_jsonpCallback',
 			success: function(d){
-				
 				callback(d.response);
 			},
 			error: function(){
@@ -38,12 +34,12 @@
 		_command('stop');
 	}
 	
-	function _nap(time, station){
-		_command('nap', { time: time, station: station });
+	function _nap(time, station, callback){
+		_command('nap', { time: time, station: station }, callback);
 	}
 	
-	function _alarm(time, station){
-		_command('alarm', { time: time, station: station });
+	function _alarm(time, station, callback){
+		_command('alarm', { time: time, station: station }, callback);
 	}
 	
 	function _volume(volume){
@@ -69,7 +65,8 @@
 		$('#tmpl-station').tmpl({
 			station: station,
 			playing: info.playing,
-			napping: info.napping
+			napping: info.napping,
+			alarmSet: info.alarmSet
 		}, { _info: _info }).replaceAll($li);
 		
 		$li = _liByStation(station);
@@ -111,9 +108,10 @@
 				var time = prompt('For how long? (30s = 30 seconds, 30m = 30 minutes)');
 				
 				if (time) {
-					_nap(time, station);
-					_loadData(function(){
-						_updateLi($li);
+					_nap(time, station, function(){
+						_loadData(function(){
+							_updateLi($li);
+						});
 					});
 				}
 			}
@@ -134,12 +132,13 @@
 				_updateLi($li);
 			} else {
 				var now = new Date();
-				var time = prompt('When should the alarm go off?', now.getHours() + ':' + now.getMinutes());
+				var time = prompt('When should the alarm go off?', now.format('H:MM'));
 				
 				if (time) {
-					_alarm(time, station);
-					_loadData(function(){
-						_updateLi($li);
+					_alarm(time, station, function(){
+						_loadData(function(){
+							_updateLi($li);
+						});
 					});
 				}
 			}
@@ -161,7 +160,7 @@
 			
 			if (_info.alarm.next !== null) {
 				var alarm = new Date(_info.alarm.next);
-				_info.alarm.absString = alarm.getHours() + ':' + alarm.getMinutes();
+				_info.alarm.absString = alarm.format('H:MM');
 				_info.alarm.relString = jQuery.timeago(alarm);
 			}
 			
@@ -192,6 +191,8 @@
 	
 	$('#volume').change(function(){
 		_volume($(this).val());
+	}).focus(function(){
+		console.log('asd');
 	});
 	
 })();

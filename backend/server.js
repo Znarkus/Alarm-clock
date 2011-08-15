@@ -1,16 +1,19 @@
 
 var util = require('util'),
-	childProcess = require('child_process'),
+	childProcess = require('child_process')
+	libPath = '../lib/',
 	child = null, currentVolume = 80, stationPlaying = null,
 	napInfo = { timer: null, end: null, station: null },
 	alarmInfo = { timer: null, next: null, station: null };
 
+require(libPath + 'date.format.js');
+	
 var Stations = {
 	p3: { cmd: 'mplayer -playlist http://sverigesradio.se/topsy/direkt/164-mp3.asx -volume %volume%' }
 };
 
 function log(text){
-	util.puts('[' + (new Date()).toUTCString() + '] ' + text);
+	util.puts('[' + (new Date()).format() + '] ' + text);
 }
 
 function mplayerCommand(cmd){
@@ -79,16 +82,26 @@ function volume(value){
 	}
 }
 
+function _cancelNap(){
+	clearTimeout(napInfo.timer);
+	napInfo = { timer: null, end: null, station: null };
+}
+
+function _cancelAlarm(){
+	clearTimeout(alarmInfo.timer);
+	alarmInfo = { timer: null, next: null, station: null };
+}
+
 function cancel(what){
 	switch (what) {
 		case 'nap':
-			clearTimeout(napInfo.timer);
-			napInfo = { timer: null, end: null, station: null };
+			log('Cancelled nap.');
+			_cancelNap();
 		break;
 		
 		case 'alarm':
-			clearTimeout(alarmInfo.timer);
-			alarmInfo = { timer: null, next: null, station: null };
+			log('Cancelled alarm.');
+			_cancelAlarm();
 		break;
 	}
 }
@@ -118,7 +131,7 @@ function nap(time, station){
 		
 		stop();
 		
-		cancel('nap');
+		_cancelNap();
 		napInfo.end = (new Date()).getTime() + time * 1000;
 		napInfo.station = station;
 		napInfo.timer = setTimeout(function(){
@@ -145,9 +158,9 @@ function _getTimestampFromTime(hh, mm){
 }
 
 function _alarm(timestamp, station){
-	log('Alarm is set to go off ' + (new Date(timestamp)).toUTCString() + '');
+	log('Alarm is set to go off ' + (new Date(timestamp)).format() + '');
 	
-	cancel('alarm');
+	_cancelAlarm();
 	alarmInfo.next = timestamp;
 	alarmInfo.station = station;
 	alarmInfo.timer = setTimeout(function(){
@@ -163,8 +176,8 @@ function alarm(time, station){
 	if (time === undefined) {
 		return { next: alarmInfo.next, station: alarmInfo.station };
 	} else {
-		var m = time.match(/^([0-9]{1,2}):([0-9]{1,2})$/);
-		_alarm(_getTimestampFromTime(m[1], m[2]), station);
+		var m = time.match(/^([0-9]{1,2})(?::([0-9]{1,2}))?$/);
+		_alarm(_getTimestampFromTime(m[1], m[2] !== undefined ? m[2] : 0), station);
 	}
 }
 
