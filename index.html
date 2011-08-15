@@ -39,7 +39,7 @@
 
 <script id="tmpl-station" type="text/x-jquery-tmpl">
     <li data-station="${station}" id="station-${station}" {{if playing}}class="playing"{{/if}}>
-    	${station}
+    	${name}
     	
     	(
     		<span class="playback-wrapper">
@@ -58,7 +58,7 @@
     		</span>,
     		<span class="alarm-wrapper">
     			{{if alarmSet}}
-    				Alarm set to go off in ${$item._info.alarm.relString} (${$item._info.alarm.absString})... <a href="javascript:;">Cancel alarm</a>
+    				Alarm set to go off ${$item._info.alarm.absString} (in ${$item._info.alarm.relString})... <a href="javascript:;">Cancel alarm</a>
     			{{else}}
     				<a href="javascript:;">Alarm</a>
     			{{/if}}

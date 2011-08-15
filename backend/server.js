@@ -9,7 +9,7 @@ var util = require('util'),
 require(libPath + 'date.format.js');
 	
 var Stations = {
-	p3: { cmd: 'mplayer -playlist http://sverigesradio.se/topsy/direkt/164-mp3.asx -volume %volume%' }
+	swedenP3: { name: 'SR P3', cmd: 'mplayer -playlist http://sverigesradio.se/topsy/direkt/164-mp3.asx -volume %volume%' }
 };
 
 function log(text){
@@ -31,6 +31,7 @@ function stations(){
 	Object.keys(Stations).forEach(function(station){
 		data.push({
 			station: station,
+			name: Stations[station].name,
 			playing: stationPlaying === station,
 			napping: napInfo.station === station,
 			alarmSet: alarmInfo.station === station

@@ -1,7 +1,7 @@
 
 (function(){
 	
-	var _info, _stationLookup = {};
+	var _info, _stationLookup = {}, lockUiUpdate = false;
 	
 	Config.server.httpAddress = 'http://' + Config.server.address + ':' + Config.server.port + '/';
 	
@@ -64,6 +64,7 @@
 		
 		$('#tmpl-station').tmpl({
 			station: station,
+			name: info.name,
 			playing: info.playing,
 			napping: info.napping,
 			alarmSet: info.alarmSet
@@ -171,6 +172,10 @@
 	}
 	
 	function _updateUi(){
+		if (lockUiUpdate) {
+			return;
+		}
+		
 		var $stations = $('#stations')/*.html('<li>Loading...</li>')*/,
 			$volume = $('#volume');
 		
@@ -192,7 +197,9 @@
 	$('#volume').change(function(){
 		_volume($(this).val());
 	}).focus(function(){
-		console.log('asd');
+		lockUiUpdate = true;
+	}).blur(function(){
+		lockUiUpdate = false;
 	});
 	
 })();
