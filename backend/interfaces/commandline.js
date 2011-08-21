@@ -48,6 +48,10 @@ stdin.on('data', function(buffer){
 				server.cancel(args[0]);
 			break;
 			
+			case 'say':
+				server.say(m[2].trim());
+			break;
+			
 			case 'quit':
 			case 'exit':
 				//process.stdin.removeAllListeners('data');

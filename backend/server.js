@@ -2,7 +2,8 @@
 var util = require('util'),
 	childProcess = require('child_process')
 	libPath = '../lib/',
-	child = null, currentVolume = 80, stationPlaying = null,
+	stationChildProcess = null, talkChildProcess = null,
+	currentVolume = 80, stationPlaying = null, alarmShoutTimer = null,
 	napInfo = { timer: null, end: null, station: null },
 	alarmInfo = { timer: null, next: null, station: null };
 
@@ -17,8 +18,8 @@ function log(text){
 }
 
 function mplayerCommand(cmd){
-	if (child !== null && child.stdin.writable) {
-		child.stdin.write(cmd + '\n');
+	if (stationChildProcess !== null && stationChildProcess.stdin.writable) {
+		stationChildProcess.stdin.write(cmd + '\n');
 		return true;
 	} else {
 		return false;
@@ -44,12 +45,12 @@ function stations(){
 function play(station){
 	log('Starting playback of "' + station + '"...');
 	
-	if (child === null) {
+	if (stationChildProcess === null) {
 		var cmd = Stations[station].cmd.replace('%volume%', currentVolume) + ' -slave -quiet > /dev/null';
 		
-		child = childProcess.exec(cmd, function(/*error, stdout, stderr*/){
+		stationChildProcess = childProcess.exec(cmd, function(/*error, stdout, stderr*/){
 			//util.puts('[CALLBACK]', error, stderr);
-			child = null;
+			stationChildProcess = null;
 		});
 	}
 	
@@ -83,6 +84,26 @@ function volume(value){
 	}
 }
 
+function say(text, callback){
+	log('Saying "' + text + '"...');
+	
+	if (talkChildProcess === null) {
+		var cmd = " echo '" + text.replace(/'/g, "'\\''") + "' | festival --tts";
+		var stationWasPlaying = stationPlaying;
+		stop();
+		
+		talkChildProcess = childProcess.exec(cmd, function(/*error, stdout, stderr*/){
+			//console.log(error, stdout, stderr);
+			talkChildProcess = null;
+			play(stationWasPlaying);
+			
+			if (typeof(callback) === 'function') {
+				callback();
+			}
+		});
+	}
+}
+
 function _cancelNap(){
 	clearTimeout(napInfo.timer);
 	napInfo = { timer: null, end: null, station: null };
@@ -90,6 +111,7 @@ function _cancelNap(){
 
 function _cancelAlarm(){
 	clearTimeout(alarmInfo.timer);
+	clearInterval(alarmShoutTimer);
 	alarmInfo = { timer: null, next: null, station: null };
 }
 
@@ -144,7 +166,38 @@ function nap(time, station){
 	}
 }
 
-function _getTimestampFromTime(hh, mm){
+function _playAlarm(station){
+	volume(100);
+	play(station);
+	
+	setTimeout(function(){
+		say("Good morning Sir! It's now " + (new Date).format('hh:MM') + " o'clock.");
+	}, 5000);
+	
+	alarmShoutTimer = setInterval(function(){
+		say("Sir, you need to wake up! It's now " + (new Date).format('hh:MM') + " o'clock.");
+	}, 5 * 60000);
+}
+
+function _alarm(date, station){
+	timestamp = date.getTime();
+	log('Alarm is set to go off ' + date.format() + '');
+	
+	_cancelAlarm();
+	alarmInfo.next = timestamp;
+	alarmInfo.station = station;
+	alarmInfo.timer = setTimeout(function(){
+		// Increment alarm with 1 day
+		var next = new Date(timestamp);
+		next.setDate(next.getDate() + 1);
+		_alarm(next, station);
+		
+		// Play
+		_playAlarm(station);
+	}, timestamp - (new Date()).getTime());
+}
+
+function _getNextOccurrence(hh, mm){
 	var d = new Date();
 	
 	d.setHours(hh);
@@ -155,22 +208,7 @@ function _getTimestampFromTime(hh, mm){
 		d.setDate(d.getDate() + 1);
 	}
 	
-	return d.getTime();
-}
-
-function _alarm(timestamp, station){
-	log('Alarm is set to go off ' + (new Date(timestamp)).format() + '');
-	
-	_cancelAlarm();
-	alarmInfo.next = timestamp;
-	alarmInfo.station = station;
-	alarmInfo.timer = setTimeout(function(){
-		play(station);
-		
-		var next = new Date(timestamp);
-		next.setDate(next.getDate() + 1);
-		_alarm(next.getTime(), station);
-	}, timestamp - (new Date()).getTime());
+	return d;
 }
 
 function alarm(time, station){
@@ -178,7 +216,7 @@ function alarm(time, station){
 		return { next: alarmInfo.next, station: alarmInfo.station };
 	} else {
 		var m = time.match(/^([0-9]{1,2})(?::([0-9]{1,2}))?$/);
-		_alarm(_getTimestampFromTime(m[1], m[2] !== undefined ? m[2] : 0), station);
+		_alarm(_getNextOccurrence(m[1], m[2] !== undefined ? m[2] : 0), station);
 	}
 }
 
@@ -191,6 +229,7 @@ exports.nap = nap;
 exports.stations = stations;
 exports.alarm = alarm;
 exports.cancel = cancel;
+exports.say = say;
 
 util.puts('\n * Loading interfaces...\n');
 
